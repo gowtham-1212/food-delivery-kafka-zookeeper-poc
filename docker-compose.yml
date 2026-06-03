@@ -1,0 +1,146 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  kafka:
+    image: bitnami/kafka:latest
+    ports:
+      - "9098:9098"
+      - "9093:9093"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9098,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9098,EXTERNAL://localhost:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+    depends_on:
+      - zookeeper
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  order-service:
+    build:
+      context: .
+      dockerfile: services/order-service/Dockerfile
+    env_file:
+      - services/order-service/.env
+    environment:
+      - KAFKA_BROKERS=kafka:9098
+      - MONGO_URI=mongodb://mongodb:27017/orders
+      - REDIS_HOST=redis
+    depends_on:
+      - kafka
+      - mongodb
+      - redis
+    develop:
+      watch:
+        - action: sync
+          path: ./services/order-service
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./services/order-service/package.json
+
+  kitchen-service:
+    build:
+      context: .
+      dockerfile: services/kitchen-service/Dockerfile
+    env_file:
+      - services/kitchen-service/.env
+    environment:
+      - KAFKA_BROKERS=kafka:9098
+      - MONGO_URI=mongodb://mongodb:27017/orders
+    depends_on:
+      - kafka
+      - mongodb
+    develop:
+      watch:
+        - action: sync
+          path: ./services/kitchen-service
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./services/kitchen-service/package.json
+
+  rider-service:
+    build:
+      context: .
+      dockerfile: services/rider-service/Dockerfile
+    env_file:
+      - services/rider-service/.env
+    environment:
+      - KAFKA_BROKERS=kafka:9098
+      - MONGO_URI=mongodb://mongodb:27017/orders
+    depends_on:
+      - kafka
+      - mongodb
+    develop:
+      watch:
+        - action: sync
+          path: ./services/rider-service
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./services/rider-service/package.json
+
+  tracking-service:
+    build:
+      context: .
+      dockerfile: services/tracking-service/Dockerfile
+    env_file:
+      - services/tracking-service/.env
+    ports:
+      - "3004:3004"
+    environment:
+      - KAFKA_BROKERS=kafka:9098
+    depends_on:
+      - kafka
+    develop:
+      watch:
+        - action: sync
+          path: ./services/tracking-service
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./services/tracking-service/package.json
+
+  frontend-dashboard:
+    build:
+      context: .
+      dockerfile: frontend-dashboard/Dockerfile
+    ports:
+      - "5173:5173"
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend-dashboard
+          target: /app
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./frontend-dashboard/package.json
+
+volumes:
+  mongodb_data:

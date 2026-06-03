@@ -1,0 +1,22 @@
+{
+  "name": "kitchen-service",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "fastify": "^4.26.0",
+    "kafkajs": "^2.2.4",
+    "mongoose": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}
